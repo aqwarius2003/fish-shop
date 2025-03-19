@@ -1,6 +1,8 @@
 import os
 import logging
 import redis
+import requests
+from urllib.parse import urljoin
 
 from dotenv import load_dotenv
 
@@ -30,12 +32,12 @@ def start(update: Updater, context: CallbackContext):
         context.bot_data['products'] = products
     else:
         products = context.bot_data['products']
-    
+
     product_buttons = [
         [InlineKeyboardButton(
-            product['Title'],
-            callback_data=product['documentId']
-        )] 
+            product.get('title'),
+            callback_data=str(product.get('id'))
+        )]
         for product in products
     ]
     reply_markup = InlineKeyboardMarkup(product_buttons)
@@ -67,7 +69,6 @@ def handle_menu(update, context: CallbackContext):
     
     query.answer()
     
-    # Возврат в меню
     if query.data == 'back_to_menu':
         start(update, context)
         return "HANDLE_MENU"
@@ -75,11 +76,10 @@ def handle_menu(update, context: CallbackContext):
     # Получаем товар из кэша
     products = context.bot_data['products']
     product = next(
-        (p for p in products if p['documentId'] == query.data),
+        (p for p in products if str(p['id']) == query.data),
         None
     )
     
-    # Если товар не найден
     if not product:
         query.message.edit_text(
             "Товар не найден",
@@ -91,7 +91,7 @@ def handle_menu(update, context: CallbackContext):
     
     # Формируем сообщение
     message = (
-        f"{product['Title']}\n"
+        f"{product['title']}\n"
         f"Цена: {product.get('price', 'не указана')} руб.\n"
         f"{product.get('description', '')}"
     )
@@ -101,15 +101,13 @@ def handle_menu(update, context: CallbackContext):
         InlineKeyboardButton("В корзину", callback_data='add_to_cart')
     ]]
     
-    # Получаем картинку если она есть
+    # Получаем картинку
     image_data = None
-    if product.get('picture'):
-        image_data = get_product_image(
-            context.bot_data['strapi_url'],
-            product['picture'][0]['url']
-        )
-    
-    # Сначала отправляем новое сообщение
+    image_data = get_product_image(
+        context.bot_data['strapi_url'],
+        product['small_image_url']
+    )
+    # Отправляем сообщение
     if image_data:
         context.bot.send_photo(
             chat_id=query.message.chat_id,
@@ -123,10 +121,8 @@ def handle_menu(update, context: CallbackContext):
             text=message,
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
-    
-    # Потом удаляем старое
+
     query.message.delete()
-    
     return "HANDLE_DESCRIPTION"
 
 
@@ -134,7 +130,7 @@ def handle_users_reply(update, context):
     """
     Функция, которая запускается при любом сообщении от пользователя и решает как его обработать.
     """
-    
+
     if update.message:
         user_reply = update.message.text
         chat_id = update.message.chat_id
