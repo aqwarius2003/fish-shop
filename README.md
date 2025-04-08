@@ -1,6 +1,58 @@
-# Fish Shop Bot
+# Fish Shop Telegram Bot
 
-Телеграм-бот для онлайн магазина морепродуктов
+Telegram бот для интернет-магазина рыбы с интеграцией Strapi CMS.
+
+## Функциональность
+
+- Просмотр каталога товаров
+- Добавление товаров в корзину
+- Управление корзиной (удаление, очистка)
+- Оформление заказа с указанием email
+
+## Технологии
+
+- Python 3.8+
+- Telegram Bot API
+- Strapi CMS
+- Redis для хранения состояний
+- Docker (опционально)
+
+## Установка
+
+1. Клонировать репозиторий
+2. Установить зависимости:
+```bash
+pip install -r requirements.txt
+```
+
+3. Создать файл `.env`:
+```env
+TG_BOT_TOKEN=your_telegram_bot_token
+STRAPI_URL=your_strapi_url
+STRAPI_API_TOKEN=your_strapi_api_token
+REDIS_HOST=localhost
+REDIS_DATABASE_PORT=6379
+REDIS_DATABASE_PASSWORD=your_redis_password
+```
+
+## Запуск
+
+```bash
+python tg_bot.py
+```
+
+## Структура проекта
+
+- `tg_bot.py` - основной файл бота
+- `strapi_service.py` - сервис для работы с Strapi API
+- `createModels.js` - скрипт для создания моделей в Strapi
+
+## Модели данных в Strapi
+
+- Product (товар)
+- Client (клиент)
+- Cart (корзина)
+- CartItem (элемент корзины)
 
 ## Подготовка окружения
 
@@ -71,7 +123,7 @@ npm --version
 1. Скачайте проект с GitHub и перейдите в его папку:
 ```bash
 # Скачиваем проект
-git clone https://github.com/ваш-репозиторий/fish-shop.git
+git clone https://github.com/aqwarius2003/fish-shop.git
 cd fish-shop
 
 # Создаем виртуальное окружение Python
@@ -107,7 +159,7 @@ npx create-strapi-app@5.11.2 fish-shop-cms --quickstart
 
 ### 2. Создание моделей данных
 
-1. Скопируйте файл `createModels.js` в папку `fish-shop-cms`:
+1. Скопируйте файл `createModels.js` в папку `fish-shop-cms`. Этот скрипт создает модели данных в Strapi и определяет структуру базы данных:
 ```bash
 # Для Windows:
 copy createModels.js fish-shop-cms\
