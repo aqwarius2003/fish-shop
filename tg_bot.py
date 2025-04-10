@@ -2,7 +2,7 @@ import os
 import logging
 import redis
 from email_validator import EmailNotValidError, validate_email
-from dotenv import load_dotenv
+from environs import Env
 from functools import partial
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -22,11 +22,13 @@ STATE_HANDLE_DESCRIPTION = 'HANDLE_DESCRIPTION'
 STATE_GET_CART_MENU = 'GET_CART_MENU'
 STATE_WAITING_EMAIL = 'WAITING_EMAIL'
 
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
 
 _database = None
 
@@ -71,6 +73,7 @@ def start(update, context, strapi_api_token, strapi_url):
             pass
 
     return STATE_HANDLE_MENU
+
 
 def handle_menu(update, context, strapi_api_token, strapi_url):
     """Обработчик выбора товара."""
@@ -133,6 +136,7 @@ def handle_menu(update, context, strapi_api_token, strapi_url):
         pass
     return STATE_HANDLE_DESCRIPTION
 
+
 def show_cart(update, context, strapi_api_token, strapi_url):
     """Показывает корзину пользователя."""
     chat_id = update.callback_query.message.chat_id if update.callback_query else update.message.chat_id
@@ -183,6 +187,7 @@ def show_cart(update, context, strapi_api_token, strapi_url):
 
     return STATE_GET_CART_MENU
 
+
 def handle_cart_action(update, context, strapi_api_token, strapi_url):
     """Добавляет товар в корзину."""
     query = update.callback_query
@@ -210,6 +215,7 @@ def handle_cart_action(update, context, strapi_api_token, strapi_url):
 
     return STATE_GET_CART_MENU
 
+
 def handle_delete_item(update, context, strapi_api_token, strapi_url):
     """Удаляет товар из корзины."""
     query = update.callback_query
@@ -223,6 +229,7 @@ def handle_delete_item(update, context, strapi_api_token, strapi_url):
     )
 
     return show_cart(update, context, strapi_api_token, strapi_url)
+
 
 def clear_cart(update, context, strapi_api_token, strapi_url):
     """Очищает корзину пользователя."""
@@ -363,16 +370,17 @@ def handle_users_reply(update, context):
     if next_state and redis_db:
         redis_db.set(chat_id, next_state)
 
+
 def main():
     """Запуск бота."""
-    load_dotenv()
-
-    strapi_url = os.getenv('STRAPI_URL')
-    strapi_api_token = os.getenv('STRAPI_API_TOKEN')
-    database_host = os.getenv("REDIS_HOST")
-    database_port = os.getenv("REDIS_DATABASE_PORT")
-    database_password = os.getenv("REDIS_DATABASE_PASSWORD")
-    token = os.getenv("TG_BOT_TOKEN")
+    env = Env()
+    env.read_env()
+    strapi_url = env.str('STRAPI_URL')
+    strapi_api_token = env.str('STRAPI_API_TOKEN')
+    database_host = env.str("REDIS_HOST")
+    database_port = env.str("REDIS_DATABASE_PORT")
+    database_password = env.str("REDIS_DATABASE_PASSWORD")
+    token = env.str("TG_BOT_TOKEN")
 
     logger.info("Запуск бота...")
 
@@ -392,6 +400,7 @@ def main():
 
     updater.start_polling()
     updater.idle()
+
 
 if __name__ == '__main__':
     main()

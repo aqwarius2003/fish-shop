@@ -1,16 +1,9 @@
-import os
 import logging
 from io import BytesIO
 from urllib.parse import urljoin
 from typing import List, Dict, Any, Optional, Union
 
 import requests
-from dotenv import load_dotenv
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s')
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +26,6 @@ def get_products(strapi_api_token: str, strapi_url: str) -> List[Dict[str, Any]]
     response.raise_for_status()
     items = response.json()
     
-    # API возвращает список товаров напрямую
     products = [
         {
             'id': item.get('id'),
@@ -67,18 +59,15 @@ def create_client(tg_id: str, strapi_api_token: str, strapi_url: str, email: str
         'Content-Type': 'application/json'
     }
 
-    # Ищем существующего клиента
     params = {"filters[tg_id][$eq]": tg_id}
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
     
     clients = response.json()
     
-    # Если клиент существует, возвращаем его ID
     if clients and len(clients) > 0:
         return clients[0]['id']
     
-    # Создаем нового клиента
     data = {
         "tg_id": tg_id,
         "email": email
@@ -89,7 +78,6 @@ def create_client(tg_id: str, strapi_api_token: str, strapi_url: str, email: str
     
     client_data = response.json()
     
-    # Возвращаем ID нового клиента
     if 'id' in client_data:
         return client_data['id']
     
@@ -162,7 +150,6 @@ def add_to_cart_item(tg_id: str, product_id: Union[int, str], strapi_api_token: 
     if not cart_id:
         cart_id = create_cart(tg_id, strapi_api_token, strapi_url)
 
-    # Ищем товар в корзине
     url_check = urljoin(strapi_url, '/api/cart-items')
     headers = {
         'Authorization': f'Bearer {strapi_api_token}',
@@ -201,7 +188,6 @@ def add_to_cart_item(tg_id: str, product_id: Union[int, str], strapi_api_token: 
     response = requests.post(url, headers=headers, json=data)
     response.raise_for_status()
 
-    # API всегда возвращает объект с ID напрямую
     return response.json()['id']
 
 
@@ -286,7 +272,6 @@ def delete_cart_item(cart_item_id: Optional[Union[int, str]] = None,
         'Content-Type': 'application/json'
     }
 
-    # Режим 1: Работа с конкретным товаром в корзине
     if cart_item_id:
         try:
             get_url = urljoin(strapi_url, f'/api/cart-items/{cart_item_id}')
@@ -311,12 +296,11 @@ def delete_cart_item(cart_item_id: Optional[Union[int, str]] = None,
             logger.error(f"Ошибка при удалении товара: {e}", exc_info=True)
             return False
 
-    # Режим 2: Удаление всех товаров из корзины пользователя
     elif tg_id and delete_all:
         try:
             cart_id = get_cart(tg_id, strapi_api_token, strapi_url)
             if not cart_id:
-                return True  # Если корзины нет, считаем задачу выполненной
+                return True
 
             cart_items_url = urljoin(strapi_url, '/api/cart-items')
             params = {"filters[cart][id][$eq]": cart_id}
