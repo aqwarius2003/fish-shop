@@ -63,25 +63,25 @@ def create_client(tg_id: str, strapi_api_token: str, strapi_url: str, email: str
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
     
-    clients = response.json()
+    client = response.json()
     
-    if clients and len(clients) > 0:
-        return clients[0]['id']
+    if client and len(client) > 0:
+        return client[0]['id']
     
-    data = {
+    client_credentials = {
         "tg_id": tg_id,
         "email": email
     }
     
-    response = requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=client_credentials)
     response.raise_for_status()
     
-    client_data = response.json()
+    client = response.json()
     
-    if 'id' in client_data:
-        return client_data['id']
+    if 'id' in client:
+        return client['id']
     
-    return client_data['data']['id']
+    return client['data']['id']
 
 
 def create_cart(tg_id: str, strapi_api_token: str, strapi_url: str) -> Optional[int]:
@@ -150,18 +150,18 @@ def add_to_cart_item(tg_id: str, product_id: Union[int, str], strapi_api_token: 
     if not cart_id:
         cart_id = create_cart(tg_id, strapi_api_token, strapi_url)
 
-    url_check = urljoin(strapi_url, '/api/cart-items')
+    check_url = urljoin(strapi_url, '/api/cart-items')
     headers = {
         'Authorization': f'Bearer {strapi_api_token}',
         'Content-Type': 'application/json'
     }
 
-    params_check = {
+    check_params = {
         "filters[cart][id][$eq]": cart_id,
         "filters[product][id][$eq]": product_id
     }
 
-    check_response = requests.get(url_check, headers=headers, params=params_check)
+    check_response = requests.get(check_url, headers=headers, params=check_params)
     check_response.raise_for_status()
     check_data = check_response.json()
 
@@ -179,13 +179,13 @@ def add_to_cart_item(tg_id: str, product_id: Union[int, str], strapi_api_token: 
         return cart_item_id
 
     url = urljoin(strapi_url, '/api/cart-items')
-    data = {
+    cart_item_details = {
         "product": product_id,
         "cart": cart_id,
         "quantity": quantity
     }
 
-    response = requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=cart_item_details)
     response.raise_for_status()
 
     return response.json()['id']
@@ -213,13 +213,13 @@ def get_products_from_cart(tg_id: str, strapi_api_token: str, strapi_url: str) -
 
     cart_items = response.json()
 
-    result = []
+    cart_items_list = []
     for item in cart_items:
         if 'product' in item and 'quantity' in item:
             product = item['product']
             quantity = item['quantity']
 
-            result.append({
+            cart_items_list.append({
                 'id': product.get('id'),
                 'title': product.get('title', 'Название отсутствует'),
                 'price': product.get('price', 0),
@@ -227,7 +227,7 @@ def get_products_from_cart(tg_id: str, strapi_api_token: str, strapi_url: str) -
                 'cart_item_id': item.get('id')
             })
 
-    return result
+    return cart_items_list
 
 
 def format_cart_content(cart_items: List[Dict[str, Any]]) -> str:
@@ -236,7 +236,7 @@ def format_cart_content(cart_items: List[Dict[str, Any]]) -> str:
         return "Корзина пуста"
 
     total_sum = 0
-    result = "Ваша корзина:\n\n"
+    cart_summary = "Ваша корзина:\n\n"
 
     for item in cart_items:
         title = item.get('title', 'Название отсутствует')
@@ -245,11 +245,11 @@ def format_cart_content(cart_items: List[Dict[str, Any]]) -> str:
         item_total = price * quantity
         total_sum += item_total
 
-        result += f"• {title}\n"
-        result += f"  {quantity} шт. × {price} руб. = {item_total} руб.\n\n"
+        cart_summary += f"• {title}\n"
+        cart_summary += f"  {quantity} шт. × {price} руб. = {item_total} руб.\n\n"
 
-    result += f"Итого: {total_sum} руб."
-    return result
+    cart_summary += f"Итого: {total_sum} руб."
+    return cart_summary
 
 
 def delete_cart_item(cart_item_id: Optional[Union[int, str]] = None, 

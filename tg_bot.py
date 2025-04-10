@@ -44,28 +44,28 @@ def get_database_connection(host, port, password):
 
 def start(update, context, strapi_api_token, strapi_url):
     """Показывает меню товаров."""
-    if 'products' not in context.bot_data or (update.message and update.message.text == '/start'):
-        products = get_products(strapi_api_token, strapi_url)
-        context.bot_data['products'] = products
+    if 'menu_items' not in context.bot_data or (update.message and update.message.text == '/start'):
+        menu_items = get_products(strapi_api_token, strapi_url)
+        context.bot_data['menu_items'] = menu_items
     else:
-        products = context.bot_data['products']
+        menu_items = context.bot_data['menu_items']
 
-    product_buttons = [
-        [InlineKeyboardButton(product.get('title'), callback_data=str(product.get('id')))]
-        for product in products
+    menu_buttons = [
+        [InlineKeyboardButton(item.get('title'), callback_data=str(item.get('id')))]
+        for item in menu_items
     ]
-    product_buttons.append([
+    menu_buttons.append([
         InlineKeyboardButton("🛒 Моя корзина", callback_data='show_cart')
     ])
 
     if update.message:
-        update.message.reply_text("Выберите товар:", reply_markup=InlineKeyboardMarkup(product_buttons))
+        update.message.reply_text("Выберите товар:", reply_markup=InlineKeyboardMarkup(menu_buttons))
     else:
         query = update.callback_query
         context.bot.send_message(
             chat_id=query.message.chat_id,
             text="Товары списком:",
-            reply_markup=InlineKeyboardMarkup(product_buttons)
+            reply_markup=InlineKeyboardMarkup(menu_buttons)
         )
         try:
             query.message.delete()
@@ -91,9 +91,9 @@ def handle_menu(update, context, strapi_api_token, strapi_url):
     if query.data.startswith('add_to_cart:'):
         return handle_cart_action(update, context, strapi_api_token, strapi_url)
 
-    products = context.bot_data['products']
-    product = next((p for p in products if str(p['id']) == query.data), None)
-    if not product:
+    menu_items = context.bot_data['menu_items']
+    selected_product = next((p for p in menu_items if str(p['id']) == query.data), None)
+    if not selected_product:
         context.bot.send_message(
             chat_id=query.message.chat_id,
             text="Товар не найден",
@@ -105,17 +105,17 @@ def handle_menu(update, context, strapi_api_token, strapi_url):
         return STATE_HANDLE_MENU
 
     message = (
-        f"{product['title']}\n"
-        f"Цена: {product.get('price', 'не указана')} руб.\n"
-        f"{product.get('description', '')}"
+        f"{selected_product['title']}\n"
+        f"Цена: {selected_product.get('price', 'не указана')} руб.\n"
+        f"{selected_product.get('description', '')}"
     )
     keyboard = [[
         InlineKeyboardButton("🔙 Назад", callback_data='back_to_menu'),
-        InlineKeyboardButton("✔ В корзину", callback_data=f'add_to_cart:{product["id"]}'),
+        InlineKeyboardButton("✔ В корзину", callback_data=f'add_to_cart:{selected_product["id"]}'),
         InlineKeyboardButton("🛒 Моя корзина", callback_data='show_cart')
     ]]
 
-    image_data = get_product_image(strapi_url, product['small_image_url'])
+    image_data = get_product_image(strapi_url, selected_product['small_image_url'])
     if image_data:
         context.bot.send_photo(
             chat_id=query.message.chat_id,
@@ -143,47 +143,47 @@ def show_cart(update, context, strapi_api_token, strapi_url):
     tg_id = str(chat_id)
 
     cart_id = get_cart(tg_id, strapi_api_token, strapi_url)
-
+    
     if not cart_id:
         message_text = "Ваша корзина пуста"
         product_buttons = []
     else:
-        cart_data = get_products_from_cart(tg_id, strapi_api_token, strapi_url)
-        message_text = format_cart_content(cart_data)
-   
+        cart_items = get_products_from_cart(tg_id, strapi_api_token, strapi_url)
+        cart_summary = format_cart_content(cart_items)
+        
         product_buttons = [
             [InlineKeyboardButton(
                 f"❌ Удалить {item['title'][:20]}{'...' if len(item['title']) > 20 else ''}",
                 callback_data=f"delete_item:{item['cart_item_id']}"
             )]
-            for item in cart_data
+            for item in cart_items
         ]
-
+    
     navigation_buttons = [
         InlineKeyboardButton("Вернуться в меню", callback_data='back_to_menu'),
         InlineKeyboardButton("Очистить корзину", callback_data='clear_cart')
     ]
-
+    
     if cart_id and product_buttons:
         product_buttons.append([
             InlineKeyboardButton("💳 Оплатить", callback_data='checkout')
         ])
         logger.info(f"Добавлена кнопка Оплатить с callback_data='checkout' для корзины {cart_id}")
-
+    
     buttons = product_buttons + [navigation_buttons]
-    markup = InlineKeyboardMarkup(buttons)
-
+    keyboard = InlineKeyboardMarkup(buttons)
+    
     if update.callback_query:
         try:
             update.callback_query.message.delete()
         except:
             pass
-
-    context.bot.send_message(
-        chat_id=chat_id,
-        text=message_text,
-        reply_markup=markup
-    )
+        
+        context.bot.send_message(
+            chat_id=chat_id,
+            text=cart_summary,
+            reply_markup=keyboard
+        )
 
     return STATE_GET_CART_MENU
 
@@ -193,17 +193,17 @@ def handle_cart_action(update, context, strapi_api_token, strapi_url):
     query = update.callback_query
     tg_id = str(query.message.chat_id)
     product_id = query.data.split(':')[1]
-
+    
     cart_id = get_cart(tg_id, strapi_api_token, strapi_url)
     if not cart_id:
         cart_id = create_cart(tg_id, strapi_api_token, strapi_url)
-
+    
     add_to_cart_item(tg_id, product_id, strapi_api_token, strapi_url)
     try:
         query.message.delete()
     except:
         pass
-
+        
     context.bot.send_message(
         chat_id=tg_id,
         text="✅ Товар добавлен в корзину!",
@@ -212,7 +212,7 @@ def handle_cart_action(update, context, strapi_api_token, strapi_url):
             InlineKeyboardButton("Корзина", callback_data='show_cart')
         ]])
     )
-
+    
     return STATE_GET_CART_MENU
 
 
@@ -221,13 +221,13 @@ def handle_delete_item(update, context, strapi_api_token, strapi_url):
     query = update.callback_query
     tg_id = str(query.message.chat_id)
     cart_item_id = query.data.split(':')[1]
-
+    
     delete_cart_item(
-        cart_item_id=cart_item_id, 
-        strapi_api_token=strapi_api_token, 
-        strapi_url=strapi_url
-    )
-
+            cart_item_id=cart_item_id, 
+            strapi_api_token=strapi_api_token, 
+            strapi_url=strapi_url
+        )
+        
     return show_cart(update, context, strapi_api_token, strapi_url)
 
 
@@ -237,12 +237,12 @@ def clear_cart(update, context, strapi_api_token, strapi_url):
     tg_id = str(query.message.chat_id)
 
     delete_cart_item(
-        tg_id=tg_id, 
-        strapi_api_token=strapi_api_token, 
-        strapi_url=strapi_url, 
-        delete_all=True
-    )
-
+            tg_id=tg_id, 
+            strapi_api_token=strapi_api_token, 
+            strapi_url=strapi_url, 
+            delete_all=True
+        )
+        
     try:
         query.message.delete()
     except:
@@ -381,11 +381,11 @@ def main():
     database_port = env.str("REDIS_DATABASE_PORT")
     database_password = env.str("REDIS_DATABASE_PASSWORD")
     token = env.str("TG_BOT_TOKEN")
-
+    
     logger.info("Запуск бота...")
-
+    
     db = get_database_connection(database_host, database_port, database_password)
-
+    
     updater = Updater(token)
     dispatcher = updater.dispatcher
 
