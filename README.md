@@ -39,11 +39,6 @@ cd fish-shop
 ```bash
 # Создаем новый проект Strapi
 npx create-strapi-app@5.11.2 fish-shop-cms --quickstart
-
-# Копируем и запускаем скрипт создания моделей
-cp createModels.js fish-shop-cms/
-cd fish-shop-cms
-node createModels.js
 ```
 
 ### 4. Настройка Strapi
@@ -59,13 +54,36 @@ node createModels.js
    - Name: Bot API Token
    - Type: Full access
 
-### 5. Установка Python
+### 5. Создание моделей данных
 
-- Скачайте [Python 3.11+](https://www.python.org/downloads/)
+В админ-панели Strapi нужно создать следующие модели:
+
+1. **Product** (Товар)
+   - `title` (string) - название товара
+   - `description` (text) - описание товара
+   - `picture` (media) - изображение товара
+   - `price` (number) - цена товара
+
+2. **Cart** (Корзина)
+   - `tg_id` (string) - ID пользователя в Telegram
+   - Связь один-к-одному с моделью Client
+
+3. **CartItem** (Элемент корзины)
+   - `quantity` (number) - количество товара
+   - Связь многие-к-одному с моделями Product и Cart
+
+4. **Client** (Клиент)
+   - `tg_id` (string) - ID пользователя в Telegram
+   - `email` (email) - email клиента
+   - Связь один-к-одному с моделью Cart
+
+### 6. Установка Python
+
+- Скачайте [Python 3.10+](https://www.python.org/downloads/)
 - При установке отметьте "Add Python to PATH"
 - Проверьте установку: `python --version`
 
-### 6. Установка зависимостей Python
+### 7. Установка зависимостей Python
 
 ```bash
 # Создаем виртуальное окружение
@@ -81,7 +99,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 7. Настройка Redis
+### 8. Настройка Redis
 
 #### Windows
 - Скачайте [Redis для Windows](https://github.com/microsoftarchive/redis/releases/latest)
@@ -96,7 +114,7 @@ brew install redis
 sudo apt-get install redis-server
 ```
 
-### 8. Настройка Telegram бота
+### 9. Настройка Telegram бота
 
 1. Создайте бота через [@BotFather](https://t.me/BotFather)
 2. Получите токен бота
@@ -129,12 +147,10 @@ python tg_bot.py
 
 - `tg_bot.py` - основной файл бота
 - `strapi_service.py` - сервис для работы с Strapi API
-- `createModels.js` - скрипт для создания моделей в Strapi
 
-## Модели данных в Strapi
+## Возможные проблемы
 
-- Product (товар)
-- Client (клиент)
-- Cart (корзина)
-- CartItem (элемент корзины)
-
+1. `python not found` - проверьте PATH
+2. `npm not found` - переустановите Node.js
+3. Ошибки Strapi - проверьте версии (Node.js 18.20.7, Strapi 5.11.2)
+4. Проблемы с Redis - проверьте запуск службы
